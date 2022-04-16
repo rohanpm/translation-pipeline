@@ -13,7 +13,9 @@
 -- Start the game first, then load this script.
 
 -- TODO: calculate this path dynamically
-FILENAME = "C:\\Users\\rohan\\AppData\\Local\\rohanpm\\stream-server\\stream.txt"
+LOCALAPPDATA = os.getenv("LOCALAPPDATA")
+OUTDIR = LOCALAPPDATA .. "\\rohanpm\\stream-server"
+FILENAME = OUTDIR .. "\\stream.txt"
 
 OUT = createStringlist()
 IDX = 0
@@ -36,7 +38,8 @@ end
 
 
 function onOpenProcess(processId)
-    control_setCaption(STATUS, string.format('Process opened: %d', processId))
+    local msg = string.format('Process opened: %d\nWriting to ' .. FILENAME, processId)
+    control_setCaption(STATUS, msg)
     debugProcess()
     installBreakpoint()
 end
@@ -84,6 +87,9 @@ function makeForm()
   control_setCaption(label, "Waiting for PAL.exe...\n")
   return label
 end
+
+-- Ensure output dir exists.
+os.execute("mkdir " .. OUTDIR)
 
 -- Try a write immediately as a sanity check.
 onText("[PAL.exe stream initializing]")
