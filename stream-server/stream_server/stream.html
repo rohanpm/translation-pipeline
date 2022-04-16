@@ -1,0 +1,74 @@
+<html>
+
+<head>
+    <style>
+        #status {
+            position: fixed;
+            bottom: 0px;
+            right: 1em;
+        }
+
+        a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <p id="status">loading</p>
+
+    <div id="text">
+
+    </div>
+
+    <script type="text/javascript">
+        const STREAM_URL = 'ws://' + window.location.host + '/stream';
+
+        function trHref(text) {
+            var url = "https://translate.google.com/?sl=auto&tl=en&op=translate&text=" + text;
+            return url;
+        }
+
+        function setStatus(text) {
+            var status = document.getElementById("status");
+            status.innerText = text;
+        }
+
+        function onNewText(text) {
+            var container = document.getElementById("text");
+            var newText = document.createElement("p");
+            var trLink = document.createElement("a");
+            trLink.href = trHref(text);
+            trLink.text = text;
+            newText.append(trLink);
+            container.prepend(newText);
+
+            while (container.childElementCount >= 10) {
+                container.children[9].remove();
+            }
+        }
+
+        function setupWs() {
+            var ws = new WebSocket(STREAM_URL);
+            ws.onerror = function (event) {
+                console.log("error", event);
+                setStatus("error");
+                // TODO: some kind of reconnect logic?
+            }
+            ws.onmessage = function (event) {
+                var msg = JSON.parse(event.data);
+                console.log("msg", msg);
+
+                if (msg.hasOwnProperty("status")) {
+                    setStatus(msg["status"]);
+                } else {
+                    onNewText(msg["msg"]);
+                }
+            };
+        }
+
+        setupWs();
+    </script>
+</body>
+
+</html>
