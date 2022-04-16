@@ -12,7 +12,6 @@
 -- Dumps all dialog in real time to a text file.
 -- Start the game first, then load this script.
 
--- TODO: calculate this path dynamically
 LOCALAPPDATA = os.getenv("LOCALAPPDATA")
 OUTDIR = LOCALAPPDATA .. "\\rohanpm\\stream-server"
 FILENAME = OUTDIR .. "\\stream.txt"
