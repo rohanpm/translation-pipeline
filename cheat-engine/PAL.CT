@@ -4,43 +4,80 @@
   <UserdefinedSymbols/>
   <LuaScript>
 
-FILENAME = "c:\\users\\rohan\\documents\\fs.txt"
+-- Cheat Engine script for:
+--
+-- Sword and Fairy: https://store.steampowered.com/app/1546570/Sword_and_Fairy/
+-- (windows version only)
+--
+-- Dumps all dialog in real time to a text file.
+-- Start the game first, then load this script.
+
+-- TODO: calculate this path dynamically
+FILENAME = "C:\\Users\\rohan\\AppData\\Local\\rohanpm\\stream-server\\stream.txt"
 
 OUT = createStringlist()
 IDX = 0
 
-function onText(text)
-  text = IDX .. ':' .. text
-  IDX = IDX + 1
-  OUT.insert(0, text)
-  OUT.saveToFile(FILENAME)
-end
+--------------------------------------------------------------------------------
+-- CE event handlers:
+-- Functions here are looked up and invoked by CE, that's why you don't see any
+-- explicit calls to them.
 
 function debugger_onBreakpoint()
-  local text=readString(R14, 4096, true)
+  -- Where we break, R14 points at a UTF-16 string for a piece of dialog
+  -- soon to be displayed.
+  local text=readString(R14, 4096, true)  -- 'true' here means 'is wide'
   onText(text)
   debug_continueFromBreakpoint("co_run")
+
+  -- 'return 1' suppresses debug UI
   return 1
 end
 
-function installBreakpoint()
-  debug_removeBreakpoint("PAL.exe+64240")
-  debug_setBreakpoint("PAL.exe+64240")
-end
 
 function onOpenProcess(processId)
     control_setCaption(STATUS, string.format('Process opened: %d', processId))
     debugProcess()
     installBreakpoint()
 end
+-------------------------------------------------------------------------------
+
+function onText(text)
+  -- Called whenever we see a new line of text.
+  --
+  -- We prefix all text with a unique ID so the consumer of the text file
+  -- can tell whether they've already seen a certain message.
+  --
+  -- NOTE: this would break if text can ever contain a newline.
+  -- Seems like this doesn't happen though.
+  text = IDX .. ':' .. text
+  IDX = IDX + 1
+  OUT.add(text)
+  OUT.saveToFile(FILENAME)
+end
+
+
+function installBreakpoint()
+  -- Install breakpoint at the relevant place found by debugging.
+  --
+  -- This location seems to be invoked once for every new piece
+  -- of dialog to be displayed, at which point R14 will be a pointer
+  -- to a UTF-16 string.
+  --
+  -- Doesn't do anything for non-dialog texts such as menus.
+  debug_removeBreakpoint("PAL.exe+64240")
+  debug_setBreakpoint("PAL.exe+64240")
+end
+
 
 function onFormClose(sender)
   closeCE()
-  --sender.destroy()
 end
 
 
 function makeForm()
+  -- We pop up a form so the user knows we're running and can
+  -- kill us by closing the form.
   local frm = createForm()
   frm.setOnClose(onFormClose)
   local label = createLabel(frm)
@@ -48,10 +85,19 @@ function makeForm()
   return label
 end
 
--- do this once as sanity check
-onText("initializing")
+-- Try a write immediately as a sanity check.
+onText("[PAL.exe stream initializing]")
 
+-- Pop up the window
 STATUS = makeForm()
+
+-- Now try to attach to PAL.exe.
+-- onOpenProcess will be called once we attach.
+--
+-- FIXME: based on the name it seems like this is supposed to
+-- work whether or not PAL.exe is already running when the script
+-- loads. In practice though I haven't seen it work unless the
+-- game is already running.
 getAutoAttachList().add("PAL.exe")
 
 </LuaScript>
