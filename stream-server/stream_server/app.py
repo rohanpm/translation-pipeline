@@ -1,9 +1,8 @@
 import os
 import textwrap
-import asyncio
 from fastapi import FastAPI, Response, WebSocket
 
-from .streamsource import STREAM_PATH, StreamSource
+from stream_server.streamsource import STREAM_PATH, StreamSource
 
 app = FastAPI()
 
@@ -42,3 +41,9 @@ async def stream(ws: WebSocket):
                 await ws.send_json({"status": "connected"})
             else:
                 await ws.send_json({"msg": event})
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("stream_server.app:app", host="0.0.0.0", port=8051, log_level="info")
