@@ -3,7 +3,7 @@ import os
 from typing import Generator, Union
 from appdirs import AppDirs
 
-DIRS = AppDirs("stream-server", "rohanpm")
+DIRS = AppDirs("stream-server", "translation-pipeline")
 STREAM_PATH = os.path.join(DIRS.user_state_dir, "stream.txt")
 
 

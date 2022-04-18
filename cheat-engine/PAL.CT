@@ -11,9 +11,9 @@
 --
 -- Dumps all dialog in real time to a text file.
 -- Start the game first, then load this script.
-
+PROCESS_NAME = "PAL.exe"
 LOCALAPPDATA = os.getenv("LOCALAPPDATA")
-OUTDIR = LOCALAPPDATA .. "\\rohanpm\\stream-server"
+OUTDIR = LOCALAPPDATA .. "\\translation-pipeline\\stream-server"
 FILENAME = OUTDIR .. "\\stream.txt"
 
 OUT = createStringlist()
@@ -37,12 +37,42 @@ end
 
 
 function onOpenProcess(processId)
-    local msg = string.format('Process opened: %d\nWriting to ' .. FILENAME, processId)
-    control_setCaption(STATUS, msg)
-    debugProcess()
-    installBreakpoint()
+  STATUS.setCaption(string.format("Attaching: %d", processId))
+  local timer = createTimer(STATUS)
+  timer.Interval = 2000
+  timer.OnTimer = afterOpenProcess
 end
 -------------------------------------------------------------------------------
+
+-- Auto attach
+-- adapted from https://wiki.cheatengine.org/index.php?title=Tutorials:Lua:Setup_Auto_Attach
+-- because auto attach list doesn't seem to work...
+
+function onProcessTimer(timer)
+	local pid = getProcessIDFromProcessName(PROCESS_NAME)
+  if pid ~= nil then
+		timer.destroy()
+		openProcess(pid)
+  end
+end
+
+function startProcessTimer(owner)
+  local timer = createTimer(owner)
+  timer.Interval = 2000
+  timer.OnTimer = onProcessTimer
+end
+
+------------------------------------------------------------------------------------
+
+function afterOpenProcess(timer)
+  timer.destroy()
+
+  debugProcess()
+  installBreakpoint()
+
+  local msg = string.format('Attached: %d', getOpenedProcessID())
+  STATUS.setCaption(msg)
+end
 
 function onText(text)
   -- Called whenever we see a new line of text.
@@ -76,15 +106,36 @@ function onFormClose(sender)
   closeCE()
 end
 
+function addLabel(frm, y, text)
+  local label = createLabel(frm)
+  label.setLeft(10)
+  label.setTop(y)
+  label.setCaption(text)
+  return label
+end
+
+function onEditChange(edit)
+  FILENAME = edit.getCaption()
+end
+
 
 function makeForm()
   -- We pop up a form so the user knows we're running and can
   -- kill us by closing the form.
   local frm = createForm()
+  frm.setSize(700, 240)
   frm.setOnClose(onFormClose)
-  local label = createLabel(frm)
-  control_setCaption(label, "Waiting for PAL.exe...\n")
-  return label
+  frm.setCaption("Sword and Fairy text streamer")
+
+  addLabel(frm, 10, "Output path:")
+  local edit = createEdit(frm)
+  edit.setLeft(10)
+  edit.setTop(65)
+  edit.setWidth(650)
+  edit.setCaption(FILENAME)
+  edit.setOnChange(onEditChange)
+
+  return addLabel(frm, 170, "Waiting for PAL.exe...")
 end
 
 -- Ensure output dir exists.
@@ -98,12 +149,7 @@ STATUS = makeForm()
 
 -- Now try to attach to PAL.exe.
 -- onOpenProcess will be called once we attach.
---
--- FIXME: based on the name it seems like this is supposed to
--- work whether or not PAL.exe is already running when the script
--- loads. In practice though I haven't seen it work unless the
--- game is already running.
-getAutoAttachList().add("PAL.exe")
+startProcessTimer(STATUS)
 
 </LuaScript>
 </CheatTable>
